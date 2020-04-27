@@ -1,6 +1,170 @@
 import datetime
 
 
+class _CalendarItem:
+    '''
+    An object to represent an event on the calendar
+    '''
+
+    def __init__(self, startDT, endDT, data, parentCalendar):
+        '''
+        :param startDT:
+        :param endDT:
+        :param data: dict MUST contain keys 'ItemId', 'Subject', see __str__ method
+        :param parentCalendar:
+        '''
+        if data is None:
+            data = {}
+        # print('_CalendarItem data=', data)
+        self._data = data.copy()  # dict like {'ItemId': 'jasfsd', 'Subject': 'SuperMeeting', ...}
+        self._startDT = startDT
+        self._endDT = endDT
+        self._attachments = []
+        self._parentExchange = parentCalendar
+
+    def AddData(self, key, value):
+        self._data[key] = value
+
+    def _CalculateDuration(self):
+        # Returns float in seconds
+        delta = self.Get('End') - self.Get('Start')
+        duration = delta.total_seconds()
+        self.AddData('Duration', duration)
+
+    def Get(self, key):
+        if key == 'Start':
+            return self._startDT
+        elif key == 'End':
+            return self._endDT
+        elif key == 'Duration':
+            self._CalculateDuration()
+            return self._data.get(key, None)
+        else:
+            return self._data.get(key, None)
+
+    def get(self, key):
+        return self.Get(key)
+
+    def __contains__(self, dt):
+        '''
+        allows you to compare _CalendarItem object like you would compare datetime objects
+
+        Example:
+        if datetime.datetime.now() in calItem:
+            print('the datetime is within the CalendarItem start/end')
+
+        :param dt:
+        :return:
+        '''
+        # Note: isinstance(datetime.datetime.now(), datetime.date.today()) == True
+        # Because the point in time exist in that date
+        if isinstance(dt, datetime.datetime):
+            if self._startDT <= dt <= self._endDT:
+                return True
+            else:
+                return False
+
+        elif isinstance(dt, datetime.date):
+            if self._startDT.year == dt.year and \
+                    self._startDT.month == dt.month and \
+                    self._startDT.day == dt.day:
+                return True
+
+            elif self._endDT.year == dt.year and \
+                    self._endDT.month == dt.month and \
+                    self._endDT.day == dt.day:
+                return True
+
+            else:
+                return False
+
+    def GetAttachments(self):
+        self._attachments = []
+        return self._attachments
+
+    def HasAttachments(self):
+
+        if len(self._attachments) > 0:
+            return True
+        else:
+            return self._data.get('HasAttachment', False)
+
+
+    @property
+    def Data(self):
+        return self._data.copy()
+
+    def __iter__(self):
+        for k, v in self._data.items():
+            yield k, v
+
+        for key in ['Start', 'End', 'Duration']:
+            yield key, self.Get(key)
+
+    def __str__(self):
+        return '<CalendarItem object: Start={}, End={}, Duration={}, Subject={}, HasAttachements={}, OrganizerName={}, ItemId[:10]={}, RoomName={}, LocationId={}>'.format(
+            self.Get('Start'),
+            self.Get('End'),
+            self.Get('Duration'),
+            self.Get('Subject'),
+            self.HasAttachments(),
+            self.Get('OrganizerName'),
+            self.Get('ItemId')[:10],
+            self.Get('RoomName'),
+            self.Get('LocationId'),
+        )
+
+    def __repr__(self):
+        return str(self)
+
+    def __eq__(self, other):
+        # oldPrint('188 __eq__ self.Data=', self.Data, ',\nother.Data=', other.Data)
+        return self.Get('ItemId') == other.Get('ItemId') and \
+               self.Get('ChangeKey') == other.Get('ChangeKey')
+
+    def __lt__(self, other):
+        # print('192 __lt__', self, other)
+        if isinstance(other, datetime.datetime):
+            return self._startDT < other
+
+        elif isinstance(other, _CalendarItem):
+            return self._startDT < other._startDT
+
+        else:
+            raise TypeError('unorderable types: {} < {}'.format(self, other))
+
+    def __le__(self, other):
+        # print('203 __le__', self, other)
+        if isinstance(other, datetime.datetime):
+            return self._startDT <= other
+
+        elif isinstance(other, _CalendarItem):
+            return self._startDT <= other._startDT
+
+        else:
+            raise TypeError('unorderable types: {} < {}'.format(self, other))
+
+    def __gt__(self, other):
+        # print('214 __gt__', self, other)
+        if isinstance(other, datetime.datetime):
+            return self._endDT > other
+        elif isinstance(other, _CalendarItem):
+            return self._endDT > other._endDT
+
+        else:
+            raise TypeError('unorderable types: {} < {}'.format(self, other))
+
+    def __ge__(self, other):
+        # print('223 __ge__', self, other)
+        if isinstance(other, datetime.datetime):
+            return self._endDT >= other
+        elif isinstance(other, _CalendarItem):
+            return self._endDT >= other._endDT
+
+        else:
+            raise TypeError('unorderable types: {} < {}'.format(self, other))
+
+
 class _BaseCalendar:
     '''
     The Base for all calendar types ( Exchange, AdAstra )
@@ -141,7 +305,6 @@ class _BaseCalendar:
         for calItem in self._calendarItems:
             # print('424 searching for itemId={}, thisItemId={}'.format(itemId, calItem.Get('ItemId')))
             if calItem.Get('ItemId') == itemId:
-                calItem = self._UpdateItemFromServer(calItem)
                 return calItem
 
     def GetAllEvents(self):
