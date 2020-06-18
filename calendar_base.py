@@ -109,7 +109,7 @@ class _CalendarItem:
             self.Get('Subject'),
             self.HasAttachments(),
             self.Get('OrganizerName'),
-            self.Get('ItemId')[:10],
+            self.Get('ItemId')[:10] + '...',
             self.Get('RoomName'),
             self.Get('LocationId'),
         )
