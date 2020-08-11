@@ -1,4 +1,14 @@
 import datetime
+import time
+
+DEBUG = False
+
+if DEBUG is False:
+    print = lambda *a, **k: None
+
+offsetSeconds = time.timezone if (time.localtime().tm_isdst == 0) else time.altzone
+offsetHours = offsetSeconds / 60 / 60 * -1
+MY_TIME_ZONE = offsetHours
 
 
 class _CalendarItem:
@@ -15,7 +25,7 @@ class _CalendarItem:
         '''
         if data is None:
             data = {}
-        # print('_CalendarItem data=', data)
+        print('_CalendarItem data=', data)
         self._data = data.copy()  # dict like {'ItemId': 'jasfsd', 'Subject': 'SuperMeeting', ...}
         self._startDT = startDT
         self._endDT = endDT
@@ -64,11 +74,11 @@ class _CalendarItem:
         print('self._endDT=', self._endDT)
 
         if isinstance(dt, datetime.datetime):
-            if dt.tzinfo is None and self._startDT.tzinfo is not None:
-                # dt is naive, assume its in local system timezone
-                # dt = dt.replace(tzinfo=datetime.timezone.utc)
-                dt = dt.astimezone()
-                print('dt converted to local tz', dt)
+            # if dt.tzinfo is None and self._startDT.tzinfo is not None:
+            #     # dt is naive, assume its in local system timezone
+            #     # dt = dt.replace(tzinfo=datetime.timezone.utc)
+            #     dt = dt.astimezone()
+            #     print('dt converted to local tz', dt)
 
             print('self.startDT <= dt is', self._startDT <= dt)
             print('dt <= self._endDT is', dt <= self._endDT)
@@ -133,18 +143,18 @@ class _CalendarItem:
         return str(self)
 
     def __eq__(self, other):
-        # oldPrint('188 __eq__ self.Data=', self.Data, ',\nother.Data=', other.Data)
+        print('188 __eq__ self.Data=', self.Data, ',\nother.Data=', other.Data)
         return self.Get('ItemId') == other.Get('ItemId') and \
                self.Get('ChangeKey') == other.Get('ChangeKey')
 
     def __lt__(self, other):
-        # print('214 __gt__', self, other)
+        print('214 __gt__', self, other)
 
-        # print('192 __lt__', self, other)
+        print('192 __lt__', self, other)
         if isinstance(other, datetime.datetime):
-            if other.tzinfo is None and self._startDT.tzinfo is not None:
-                # other is naive, assume its in local system timezone
-                other = other.astimezone()
+        #     if other.tzinfo is None and self._startDT.tzinfo is not None:
+        #         # other is naive, assume its in local system timezone
+        #         other = other.astimezone()
 
             return self._startDT < other
 
@@ -155,13 +165,13 @@ class _CalendarItem:
             raise TypeError('unorderable types: {} < {}'.format(self, other))
 
     def __le__(self, other):
-        # print('214 __gt__', self, other)
+        print('214 __gt__', self, other)
 
-        # print('203 __le__', self, other)
+        print('203 __le__', self, other)
         if isinstance(other, datetime.datetime):
-            if other.tzinfo is None and self._startDT.tzinfo is not None:
-                # other is naive, assume its in local system timezone
-                other = other.astimezone()
+            # if other.tzinfo is None and self._startDT.tzinfo is not None:
+            #     # other is naive, assume its in local system timezone
+            #     other = other.astimezone()
 
             return self._startDT <= other
 
@@ -172,12 +182,12 @@ class _CalendarItem:
             raise TypeError('unorderable types: {} < {}'.format(self, other))
 
     def __gt__(self, other):
-        # print('214 __gt__', self, other)
+        print('214 __gt__', self, other)
 
         if isinstance(other, datetime.datetime):
-            if other.tzinfo is None and self._endDT.tzinfo is not None:
+            # if other.tzinfo is None and self._endDT.tzinfo is not None:
                 # other is naive, assume its in local system timezone
-                other = other.astimezone()
+                # other = other.astimezone()
 
             return self._endDT > other
         elif isinstance(other, _CalendarItem):
@@ -187,12 +197,12 @@ class _CalendarItem:
             raise TypeError('unorderable types: {} < {}'.format(self, other))
 
     def __ge__(self, other):
-        # print('223 __ge__', self, other)
+        print('223 __ge__', self, other)
 
         if isinstance(other, datetime.datetime):
-            if other.tzinfo is None and self._endDT.tzinfo is not None:
-                # other is naive, assume its in local system timezone
-                other = other.astimezone()
+            # if other.tzinfo is None and self._endDT.tzinfo is not None:
+            #     # other is naive, assume its in local system timezone
+            #     other = other.astimezone()
 
             return self._endDT >= other
         elif isinstance(other, _CalendarItem):
@@ -327,7 +337,7 @@ class _BaseCalendar:
     def GetCalendarItemsBySubject(self, exactMatch=None, partialMatch=None):
         ret = []
         for calItem in self._calendarItems:
-            # print('426 searching for exactMatch={}, partialMatch={}'.format(exactMatch, partialMatch))
+            print('426 searching for exactMatch={}, partialMatch={}'.format(exactMatch, partialMatch))
             if calItem.Get('Subject') == exactMatch:
                 calItem = self._UpdateItemFromServer(calItem)
                 ret.append(calItem)
@@ -340,7 +350,7 @@ class _BaseCalendar:
 
     def GetCalendarItemByID(self, itemId):
         for calItem in self._calendarItems:
-            # print('424 searching for itemId={}, thisItemId={}'.format(itemId, calItem.Get('ItemId')))
+            print('424 searching for itemId={}, thisItemId={}'.format(itemId, calItem.Get('ItemId')))
             if calItem.Get('ItemId') == itemId:
                 return calItem
 
@@ -443,9 +453,57 @@ class _BaseCalendar:
 
 
 def ConvertDatetimeToTimeString(dt):
+    dt = AdjustDatetimeForTimezone(dt, fromZone='Mine')
     return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
 def ConvertTimeStringToDatetime(string):
-    dt = datetime.datetime.strptime(string, '%Y-%m-%dT%H:%M:%SZ')
-    return dt.replace(tzinfo=datetime.timezone.utc)
+    '''
+    Global Scripter blocks the user of 'strptime' for some reason.
+    :param string:
+    :return:
+    '''
+    # dt = datetime.datetime.strptime(string, '%Y-%m-%dT%H:%M:%SZ')
+    year, month, etc = string.split('-')
+    day, etc = etc.split('T')
+    hour, minute, etc = etc.split(':')
+    second = etc[:-1]
+    dt = datetime.datetime(
+        year=int(year),
+        month=int(month),
+        day=int(day),
+        hour=int(hour),
+        minute=int(minute),
+        second=int(second),
+    )
+    dt = AdjustDatetimeForTimezone(dt, fromZone='Exchange')
+    return dt
+
+
+def AdjustDatetimeForTimezone(dt, fromZone):
+    delta = datetime.timedelta(hours=abs(MY_TIME_ZONE))
+
+    ts = time.mktime(dt.timetuple())
+    lt = time.localtime(ts)
+    dtIsDST = lt.tm_isdst > 0
+
+    nowIsDST = time.localtime().tm_isdst > 0
+
+    print('nowIsDST=', nowIsDST)
+    print('dtIsDST=', dtIsDST)
+
+    if fromZone == 'Mine':
+        dt = dt + delta
+        if dtIsDST and not nowIsDST:
+            dt -= datetime.timedelta(hours=1)
+        elif nowIsDST and not dtIsDST:
+            dt += datetime.timedelta(hours=1)
+
+    elif fromZone == 'Exchange':
+        dt = dt - delta
+        if dtIsDST and not nowIsDST:
+            dt += datetime.timedelta(hours=1)
+        elif nowIsDST and not dtIsDST:
+            dt -= datetime.timedelta(hours=1)
+
+    return dt
