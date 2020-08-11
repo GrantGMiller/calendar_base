@@ -58,10 +58,26 @@ class _CalendarItem:
         '''
         # Note: isinstance(datetime.datetime.now(), datetime.date.today()) == True
         # Because the point in time exist in that date
+        print('CalendarItem.__contains__(', dt)
+        print('self=', self)
+        print('self._startDT=', self._startDT)
+        print('self._endDT=', self._endDT)
+
         if isinstance(dt, datetime.datetime):
+            if dt.tzinfo is None and self._startDT.tzinfo is not None:
+                # dt is naive, assume its in local system timezone
+                # dt = dt.replace(tzinfo=datetime.timezone.utc)
+                dt = dt.astimezone()
+                print('dt converted to local tz', dt)
+
+            print('self.startDT <= dt is', self._startDT <= dt)
+            print('dt <= self._endDT is', dt <= self._endDT)
+
             if self._startDT <= dt <= self._endDT:
+                print('return True')
                 return True
             else:
+                print('return False')
                 return False
 
         elif isinstance(dt, datetime.date):
@@ -88,7 +104,6 @@ class _CalendarItem:
             return True
         else:
             return self._data.get('HasAttachment', False)
-
 
     @property
     def Data(self):
@@ -123,8 +138,14 @@ class _CalendarItem:
                self.Get('ChangeKey') == other.Get('ChangeKey')
 
     def __lt__(self, other):
+        # print('214 __gt__', self, other)
+
         # print('192 __lt__', self, other)
         if isinstance(other, datetime.datetime):
+            if other.tzinfo is None and self._startDT.tzinfo is not None:
+                # other is naive, assume its in local system timezone
+                other = other.astimezone()
+
             return self._startDT < other
 
         elif isinstance(other, _CalendarItem):
@@ -134,8 +155,14 @@ class _CalendarItem:
             raise TypeError('unorderable types: {} < {}'.format(self, other))
 
     def __le__(self, other):
+        # print('214 __gt__', self, other)
+
         # print('203 __le__', self, other)
         if isinstance(other, datetime.datetime):
+            if other.tzinfo is None and self._startDT.tzinfo is not None:
+                # other is naive, assume its in local system timezone
+                other = other.astimezone()
+
             return self._startDT <= other
 
         elif isinstance(other, _CalendarItem):
@@ -146,7 +173,12 @@ class _CalendarItem:
 
     def __gt__(self, other):
         # print('214 __gt__', self, other)
+
         if isinstance(other, datetime.datetime):
+            if other.tzinfo is None and self._endDT.tzinfo is not None:
+                # other is naive, assume its in local system timezone
+                other = other.astimezone()
+
             return self._endDT > other
         elif isinstance(other, _CalendarItem):
             return self._endDT > other._endDT
@@ -156,7 +188,12 @@ class _CalendarItem:
 
     def __ge__(self, other):
         # print('223 __ge__', self, other)
+
         if isinstance(other, datetime.datetime):
+            if other.tzinfo is None and self._endDT.tzinfo is not None:
+                # other is naive, assume its in local system timezone
+                other = other.astimezone()
+
             return self._endDT >= other
         elif isinstance(other, _CalendarItem):
             return self._endDT >= other._endDT
@@ -403,3 +440,12 @@ class _BaseCalendar:
                     self._calendarItems.remove(itemInMemory)
                     if callable(self._CalendarItemDeleted):
                         self._CalendarItemDeleted(self, itemInMemory)
+
+
+def ConvertDatetimeToTimeString(dt):
+    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def ConvertTimeStringToDatetime(string):
+    dt = datetime.datetime.strptime(string, '%Y-%m-%dT%H:%M:%SZ')
+    return dt.replace(tzinfo=datetime.timezone.utc)
