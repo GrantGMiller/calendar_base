@@ -1,4 +1,5 @@
 import datetime
+import json
 import time
 
 DEBUG = False
@@ -126,6 +127,22 @@ class _CalendarItem:
         for key in ['Start', 'End', 'Duration']:
             yield key, self.Get(key)
 
+    def dict(self):
+        d = {}
+        for k, v in dict(self).items():
+            if isinstance(v, datetime.datetime):
+                v = v.timestamp()
+            d[k] = v
+        return d
+
+    def json(self):
+        d = {}
+        for k, v in dict(self).items():
+            if isinstance(v, datetime.datetime):
+                v = v.timestamp()
+            d[k] = v
+        return json.dumps(d, indent=2, sort_keys=True)
+
     def __str__(self):
         return '<CalendarItem object: Start={}, End={}, Duration={}, Subject={}, HasAttachements={}, OrganizerName={}, ItemId[:10]={}, RoomName={}, LocationId={}>'.format(
             self.Get('Start'),
@@ -152,9 +169,9 @@ class _CalendarItem:
 
         print('192 __lt__', self, other)
         if isinstance(other, datetime.datetime):
-        #     if other.tzinfo is None and self._startDT.tzinfo is not None:
-        #         # other is naive, assume its in local system timezone
-        #         other = other.astimezone()
+            #     if other.tzinfo is None and self._startDT.tzinfo is not None:
+            #         # other is naive, assume its in local system timezone
+            #         other = other.astimezone()
 
             return self._startDT < other
 
@@ -186,8 +203,8 @@ class _CalendarItem:
 
         if isinstance(other, datetime.datetime):
             # if other.tzinfo is None and self._endDT.tzinfo is not None:
-                # other is naive, assume its in local system timezone
-                # other = other.astimezone()
+            # other is naive, assume its in local system timezone
+            # other = other.astimezone()
 
             return self._endDT > other
         elif isinstance(other, _CalendarItem):
