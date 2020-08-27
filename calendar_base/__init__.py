@@ -2,11 +2,6 @@ import datetime
 import json
 import time
 
-DEBUG = False
-
-if DEBUG is False:
-    print = lambda *a, **k: None
-
 offsetSeconds = time.timezone if (time.localtime().tm_isdst == 0) else time.altzone
 offsetHours = offsetSeconds / 60 / 60 * -1
 MY_TIME_ZONE = offsetHours
@@ -26,7 +21,6 @@ class _CalendarItem:
         '''
         if data is None:
             data = {}
-        print('_CalendarItem data=', data)
         self._data = data.copy()  # dict like {'ItemId': 'jasfsd', 'Subject': 'SuperMeeting', ...}
         self._startDT = startDT
         self._endDT = endDT
@@ -69,10 +63,6 @@ class _CalendarItem:
         '''
         # Note: isinstance(datetime.datetime.now(), datetime.date.today()) == True
         # Because the point in time exist in that date
-        print('CalendarItem.__contains__(', dt)
-        print('self=', self)
-        print('self._startDT=', self._startDT)
-        print('self._endDT=', self._endDT)
 
         if isinstance(dt, datetime.datetime):
             # if dt.tzinfo is None and self._startDT.tzinfo is not None:
@@ -81,14 +71,9 @@ class _CalendarItem:
             #     dt = dt.astimezone()
             #     print('dt converted to local tz', dt)
 
-            print('self.startDT <= dt is', self._startDT <= dt)
-            print('dt <= self._endDT is', dt <= self._endDT)
-
             if self._startDT <= dt <= self._endDT:
-                print('return True')
                 return True
             else:
-                print('return False')
                 return False
 
         elif isinstance(dt, datetime.date):
@@ -160,19 +145,11 @@ class _CalendarItem:
         return str(self)
 
     def __eq__(self, other):
-        print('188 __eq__ self.Data=', self.Data, ',\nother.Data=', other.Data)
         return self.Get('ItemId') == other.Get('ItemId') and \
                self.Get('ChangeKey') == other.Get('ChangeKey')
 
     def __lt__(self, other):
-        print('214 __gt__', self, other)
-
-        print('192 __lt__', self, other)
         if isinstance(other, datetime.datetime):
-            #     if other.tzinfo is None and self._startDT.tzinfo is not None:
-            #         # other is naive, assume its in local system timezone
-            #         other = other.astimezone()
-
             return self._startDT < other
 
         elif isinstance(other, _CalendarItem):
@@ -182,14 +159,7 @@ class _CalendarItem:
             raise TypeError('unorderable types: {} < {}'.format(self, other))
 
     def __le__(self, other):
-        print('214 __gt__', self, other)
-
-        print('203 __le__', self, other)
         if isinstance(other, datetime.datetime):
-            # if other.tzinfo is None and self._startDT.tzinfo is not None:
-            #     # other is naive, assume its in local system timezone
-            #     other = other.astimezone()
-
             return self._startDT <= other
 
         elif isinstance(other, _CalendarItem):
@@ -199,8 +169,6 @@ class _CalendarItem:
             raise TypeError('unorderable types: {} < {}'.format(self, other))
 
     def __gt__(self, other):
-        print('214 __gt__', self, other)
-
         if isinstance(other, datetime.datetime):
             # if other.tzinfo is None and self._endDT.tzinfo is not None:
             # other is naive, assume its in local system timezone
@@ -214,13 +182,7 @@ class _CalendarItem:
             raise TypeError('unorderable types: {} < {}'.format(self, other))
 
     def __ge__(self, other):
-        print('223 __ge__', self, other)
-
         if isinstance(other, datetime.datetime):
-            # if other.tzinfo is None and self._endDT.tzinfo is not None:
-            #     # other is naive, assume its in local system timezone
-            #     other = other.astimezone()
-
             return self._endDT >= other
         elif isinstance(other, _CalendarItem):
             return self._endDT >= other._endDT
@@ -291,7 +253,6 @@ class _BaseCalendar:
         self._Disconnected = func
 
     def _NewConnectionStatus(self, state):
-        print('378 _NewConnectionStatus(', state, ', self._connectionStatus=', self._connectionStatus)
         if state != self._connectionStatus:
             # the connection status has changed
             self._connectionStatus = state
@@ -311,7 +272,7 @@ class _BaseCalendar:
         :param endDT: only search for events before this date
         :return:
         '''
-        pass
+        raise NotImplementedError
 
     def CreateCalendarEvent(self, subject, body, startDT, endDT):
         '''
@@ -325,7 +286,7 @@ class _BaseCalendar:
         :param endDT:
         :return:
         '''
-        pass
+        raise NotImplementedError
 
     def ChangeEventTime(self, calItem, newStartDT, newEndDT):
         '''
@@ -338,6 +299,7 @@ class _BaseCalendar:
         :param newEndDT:
         :return:
         '''
+        raise NotImplementedError
 
     def DeleteEvent(self, calItem):
         '''
@@ -348,13 +310,13 @@ class _BaseCalendar:
         :param calItem:
         :return:
         '''
+        raise NotImplementedError
 
     # Dont override these below (unless you dare) #########################
 
     def GetCalendarItemsBySubject(self, exactMatch=None, partialMatch=None):
         ret = []
         for calItem in self._calendarItems:
-            print('426 searching for exactMatch={}, partialMatch={}'.format(exactMatch, partialMatch))
             if calItem.Get('Subject') == exactMatch:
                 calItem = self._UpdateItemFromServer(calItem)
                 ret.append(calItem)
@@ -367,7 +329,6 @@ class _BaseCalendar:
 
     def GetCalendarItemByID(self, itemId):
         for calItem in self._calendarItems:
-            print('424 searching for itemId={}, thisItemId={}'.format(itemId, calItem.Get('ItemId')))
             if calItem.Get('ItemId') == itemId:
                 return calItem
 
@@ -505,9 +466,6 @@ def AdjustDatetimeForTimezone(dt, fromZone):
     dtIsDST = lt.tm_isdst > 0
 
     nowIsDST = time.localtime().tm_isdst > 0
-
-    print('nowIsDST=', nowIsDST)
-    print('dtIsDST=', dtIsDST)
 
     if fromZone == 'Mine':
         dt = dt + delta
