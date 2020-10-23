@@ -263,6 +263,10 @@ class _BaseCalendar:
                 if callable(self._Disconnected):
                     self._Disconnected(self, state)
 
+    @property
+    def ConnectionStatus(self):
+        return self._connectionStatus
+
     def UpdateCalendar(self, calendar=None, startDT=None, endDT=None):
         '''
         Subclasses should override this
